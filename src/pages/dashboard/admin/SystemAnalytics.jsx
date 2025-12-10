@@ -7,7 +7,7 @@ import DonationStatsChart from '../../../components/charts/DonationStatsChart';
 import UserActivityChart from '../../../components/charts/UserActivityChart';
 import MonthlyDonationsChart from '../../../components/charts/MonthlyDonationsChart';
 import useAdmin from '../../../hooks/useAdmin';
-import { exportToPDF } from '../../../utils/pdfGenerator';
+import { generateAdminReportPDF, downloadPDF } from '../../../utils/pdfGenerator';
 
 const SystemAnalytics = () => {
   const { getSystemAnalytics, loading } = useAdmin();
@@ -37,14 +37,32 @@ const SystemAnalytics = () => {
   const handleExportPDF = () => {
     if (!analytics) return;
     
-    const data = {
-      title: 'System Analytics Report',
-      period: timeFilter,
-      analytics: analytics,
-      exportDate: new Date().toLocaleDateString()
+    // Format analytics data for admin report PDF
+    const reportData = {
+      totalUsers: analytics.totalUsers || 0,
+      activeDonors: analytics.activeUsers || 0,
+      totalDonations: analytics.totalDonations || 0,
+      pendingRequests: analytics.totalRequests || 0,
+      completedDonations: analytics.totalDonations || 0,
+      totalFunding: 0, // Not in analytics, set to 0
+      recentActivity: [
+        {
+          timestamp: new Date().toISOString(),
+          type: 'Analytics Export',
+          description: `System Analytics Report for ${timeFilter} period`,
+          user: 'System'
+        },
+        {
+          timestamp: new Date().toISOString(),
+          type: 'Performance',
+          description: `Response Time: ${analytics.avgResponseTime || 0} hours, Success Rate: ${analytics.successRate || 0}%`,
+          user: 'System'
+        }
+      ]
     };
     
-    exportToPDF(data, 'system-analytics');
+    const doc = generateAdminReportPDF(reportData, 'system-analytics');
+    downloadPDF(doc, `system-analytics-${timeFilter}`);
   };
 
   const timeFilters = [
@@ -381,7 +399,7 @@ const SystemAnalytics = () => {
                 <div className="text-3xl font-bold text-gray-900">{analytics.userByRole?.donor || 0}</div>
                 <div className="text-sm text-gray-600">Donors</div>
                 <div className="text-xs text-gray-500">
-                  {((analytics.userByRole?.donor / analytics.totalUsers) * 100).toFixed(1)}% of total
+                  {analytics.totalUsers > 0 ? ((analytics.userByRole?.donor / analytics.totalUsers) * 100).toFixed(1) : 0}% of total
                 </div>
               </div>
 
@@ -389,7 +407,7 @@ const SystemAnalytics = () => {
                 <div className="text-3xl font-bold text-gray-900">{analytics.userByRole?.volunteer || 0}</div>
                 <div className="text-sm text-gray-600">Volunteers</div>
                 <div className="text-xs text-gray-500">
-                  {((analytics.userByRole?.volunteer / analytics.totalUsers) * 100).toFixed(1)}% of total
+                  {analytics.totalUsers > 0 ? ((analytics.userByRole?.volunteer / analytics.totalUsers) * 100).toFixed(1) : 0}% of total
                 </div>
               </div>
 
@@ -397,7 +415,7 @@ const SystemAnalytics = () => {
                 <div className="text-3xl font-bold text-gray-900">{analytics.userByRole?.admin || 0}</div>
                 <div className="text-sm text-gray-600">Admins</div>
                 <div className="text-xs text-gray-500">
-                  {((analytics.userByRole?.admin / analytics.totalUsers) * 100).toFixed(1)}% of total
+                  {analytics.totalUsers > 0 ? ((analytics.userByRole?.admin / analytics.totalUsers) * 100).toFixed(1) : 0}% of total
                 </div>
               </div>
 
@@ -449,10 +467,10 @@ const SystemAnalytics = () => {
                       <div className="w-32 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-green-500 h-2 rounded-full"
-                          style={{ width: `${group.successRate}%` }}
+                          style={{ width: `${group.successRate || 0}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm font-medium text-gray-900">{group.successRate}%</span>
+                      <span className="text-sm font-medium text-gray-900">{group.successRate || 0}%</span>
                     </div>
                   </div>
                 ))}

@@ -1,7 +1,7 @@
 // client/src/context/NotificationContext.jsx
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { notificationService } from '../services/notificationService';
+import notificationService from '../services/notificationService'; // Fixed: default import
 import { toast } from 'react-hot-toast';
 
 const NotificationContext = createContext();
@@ -88,10 +88,17 @@ export const NotificationProvider = ({ children }) => {
     try {
       if (showLoading) setLoading(true);
       
-      const response = await notificationService.getNotifications(getAuthHeaders());
+      const response = await notificationService.getNotifications(); // Fixed: no headers parameter
       
-      setNotifications(response.notifications || []);
-      setUnreadCount(response.unreadCount || 0);
+      // Access response.data based on your service pattern
+      if (response.success && response.data) {
+        setNotifications(response.data.notifications || []);
+        setUnreadCount(response.data.unreadCount || 0);
+      } else {
+        // Handle error response
+        setNotifications([]);
+        setUnreadCount(0);
+      }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
       // Don't show toast for polling errors
@@ -146,7 +153,7 @@ export const NotificationProvider = ({ children }) => {
     try {
       setUpdating(true);
       
-      await notificationService.markAsRead(notificationId, getAuthHeaders());
+      await notificationService.markAsRead(notificationId); // Fixed: no headers parameter
       
       // Update local state
       setNotifications(prev =>
@@ -171,7 +178,7 @@ export const NotificationProvider = ({ children }) => {
     try {
       setUpdating(true);
       
-      await notificationService.markAllAsRead(getAuthHeaders());
+      await notificationService.markAllAsRead(); // Fixed: no headers parameter
       
       // Update local state
       setNotifications(prev =>
@@ -194,7 +201,7 @@ export const NotificationProvider = ({ children }) => {
     try {
       setUpdating(true);
       
-      await notificationService.deleteNotification(notificationId, getAuthHeaders());
+      await notificationService.deleteNotification(notificationId); // Fixed: no headers parameter
       
       // Update local state
       const deletedNotification = notifications.find(n => n._id === notificationId);
@@ -218,7 +225,7 @@ export const NotificationProvider = ({ children }) => {
     try {
       setUpdating(true);
       
-      await notificationService.deleteAllNotifications(getAuthHeaders());
+      await notificationService.clearAll(); // Fixed: using clearAll() method
       
       // Clear local state
       setNotifications([]);
@@ -235,14 +242,16 @@ export const NotificationProvider = ({ children }) => {
 
   const createNotification = async (notificationData) => {
     try {
-      const newNotification = await notificationService.createNotification(
-        notificationData,
-        getAuthHeaders()
-      );
+      const response = await notificationService.create(notificationData); // Fixed: no headers parameter
       
-      addNotification(newNotification);
-      
-      return { success: true, notification: newNotification };
+      // Assuming response.data contains the new notification
+      if (response.success && response.data) {
+        const newNotification = response.data;
+        addNotification(newNotification);
+        return { success: true, notification: newNotification };
+      } else {
+        throw new Error(response.message || 'Failed to create notification');
+      }
     } catch (error) {
       console.error('Failed to create notification:', error);
       return { success: false, error: error.message };

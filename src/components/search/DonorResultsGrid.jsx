@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FiUser, FiMapPin, FiPhone, FiMail, FiAlertCircle, FiDownload, FiGrid, FiList } from 'react-icons/fi';
 import DonorCard from '../common/DonorCard';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { exportToPDF } from '../../utils/pdfGenerator';
+import { generateDonorsPDF, downloadPDF } from '../../utils/pdfGenerator';
 
 const DonorResultsGrid = ({
   donors = [],
@@ -23,20 +23,8 @@ const DonorResultsGrid = ({
     
     setExporting(true);
     try {
-      await exportToPDF({
-        title: 'Blood Donors Search Results',
-        data: donors.map(donor => ({
-          name: donor.name,
-          bloodGroup: donor.bloodGroup,
-          location: `${donor.district}, ${donor.upazila}`,
-          availability: donor.availability || 'available',
-          lastDonation: donor.lastDonationDate 
-            ? new Date(donor.lastDonationDate).toLocaleDateString() 
-            : 'Never',
-          totalDonations: donor.totalDonations || 0
-        })),
-        columns: ['Name', 'Blood Group', 'Location', 'Availability', 'Last Donation', 'Total Donations']
-      });
+      const doc = generateDonorsPDF(donors);
+      downloadPDF(doc, 'donor-search-results');
     } catch (error) {
       console.error('Export failed:', error);
     } finally {

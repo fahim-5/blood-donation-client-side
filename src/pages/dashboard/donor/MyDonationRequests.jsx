@@ -7,7 +7,7 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import useAuth from '../../../hooks/useAuth';
 import useDonations from '../../../hooks/useDonations';
-import { exportToPDF } from '../../../utils/pdfGenerator';
+import { generateDonorsPDF, downloadPDF } from '../../../utils/pdfGenerator';
 
 const MyDonationRequests = () => {
   const { user } = useAuth();
@@ -73,11 +73,11 @@ const MyDonationRequests = () => {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(request => 
-        request.recipientName.toLowerCase().includes(term) ||
-        request.hospitalName.toLowerCase().includes(term) ||
-        request.bloodGroup.toLowerCase().includes(term) ||
-        request.recipientDistrict.toLowerCase().includes(term) ||
-        request.recipientUpazila.toLowerCase().includes(term)
+        request.recipientName?.toLowerCase().includes(term) ||
+        request.hospitalName?.toLowerCase().includes(term) ||
+        request.bloodGroup?.toLowerCase().includes(term) ||
+        request.recipientDistrict?.toLowerCase().includes(term) ||
+        request.recipientUpazila?.toLowerCase().includes(term)
       );
     }
 
@@ -156,15 +156,28 @@ const MyDonationRequests = () => {
       return;
     }
     
-    const data = {
-      title: 'My Donation Requests Report',
-      filters: { status: statusFilter, search: searchTerm },
-      requests: filteredRequests,
-      user: user?.name,
-      exportDate: new Date().toLocaleDateString()
+    // Format donation requests as donor-like data for PDF generation
+    const donorsData = filteredRequests.map(request => ({
+      name: request.recipientName || 'Unknown',
+      bloodGroup: request.bloodGroup || 'Unknown',
+      district: request.recipientDistrict || 'Unknown',
+      upazila: request.recipientUpazila || 'Unknown',
+      email: request.requester?.email || user?.email || 'N/A',
+      phone: request.requester?.phone || user?.phone || 'N/A',
+      status: request.status === 'done' ? 'Completed' : 
+              request.status === 'canceled' ? 'Canceled' :
+              request.status === 'inprogress' ? 'In Progress' : 'Pending'
+    }));
+    
+    const filters = {
+      reportType: 'My Donation Requests',
+      status: statusFilter === 'all' ? 'All Status' : statusFilter,
+      search: searchTerm || 'None',
+      user: user?.name || 'Anonymous'
     };
     
-    exportToPDF(data, 'my-donation-requests');
+    const doc = generateDonorsPDF(donorsData, filters);
+    downloadPDF(doc, `my-donation-requests-${statusFilter}`);
   };
 
   // Pagination calculations

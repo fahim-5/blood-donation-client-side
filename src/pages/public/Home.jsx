@@ -8,7 +8,6 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import FeatureCard from '../../components/ui/FeatureCard';
 import WelcomeBanner from '../../components/ui/WelcomeBanner';
 import ContactForm from '../../components/forms/ContactForm';
-import './Home.css';
 
 const Home = () => {
   const navigate = useNavigate();

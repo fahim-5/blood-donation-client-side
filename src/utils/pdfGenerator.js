@@ -40,6 +40,31 @@ export const generateDonorsPDF = (donors, filters = {}) => {
     yPos += 7;
   }
   
+  if (filters.reportType) {
+    doc.text(`Report Type: ${filters.reportType}`, 14, yPos);
+    yPos += 7;
+  }
+  
+  if (filters.status) {
+    doc.text(`Status: ${filters.status}`, 14, yPos);
+    yPos += 7;
+  }
+  
+  if (filters.period) {
+    doc.text(`Period: ${filters.period}`, 14, yPos);
+    yPos += 7;
+  }
+  
+  if (filters.user) {
+    doc.text(`User: ${filters.user}`, 14, yPos);
+    yPos += 7;
+  }
+  
+  if (filters.exportDate) {
+    doc.text(`Export Date: ${filters.exportDate}`, 14, yPos);
+    yPos += 7;
+  }
+  
   yPos += 5;
   
   // Prepare table data
@@ -50,7 +75,11 @@ export const generateDonorsPDF = (donors, filters = {}) => {
     donor.upazila || 'N/A',
     donor.email || 'N/A',
     donor.phone || 'N/A',
-    donor.status === 'active' ? 'Available' : 'Unavailable',
+    donor.status === 'active' ? 'Available' : 
+    donor.status === 'done' || donor.status === 'Completed' ? 'Completed' :
+    donor.status === 'inprogress' || donor.status === 'In Progress' ? 'In Progress' :
+    donor.status === 'pending' || donor.status === 'Pending' ? 'Pending' :
+    donor.status === 'canceled' || donor.status === 'Canceled' ? 'Canceled' : 'Unknown',
   ]);
   
   // Generate table
@@ -706,6 +735,96 @@ export const generateAdminReportPDF = (reportData, reportType = 'monthly') => {
 };
 
 /**
+ * Generate PDF for funding history
+ * @param {Array} fundingHistory - Array of funding history objects
+ * @param {Object} user - User object
+ * @param {string} period - Time period
+ * @returns {jsPDF} - PDF document
+ */
+export const generateFundingHistoryPDF = (fundingHistory, user, period = 'all') => {
+  const doc = new jsPDF();
+  
+  // Add header
+  doc.setFontSize(20);
+  doc.setTextColor(40, 40, 40);
+  doc.text('Blood Donation Platform - Funding History', 105, 20, { align: 'center' });
+  
+  // Add timestamp and user info
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 28, { align: 'center' });
+  doc.text(`User: ${user?.name || 'Anonymous'} | Period: ${period}`, 105, 34, { align: 'center' });
+  
+  // Add summary statistics
+  doc.setFontSize(12);
+  doc.setTextColor(60, 60, 60);
+  let yPos = 45;
+  
+  const totalAmount = fundingHistory.reduce((sum, item) => sum + (item.amount || 0), 0);
+  const donationCount = fundingHistory.length;
+  const averageDonation = donationCount > 0 ? totalAmount / donationCount : 0;
+  
+  doc.text(`Total Donations: ${donationCount}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Total Amount: ৳${totalAmount.toLocaleString()}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Average Donation: ৳${averageDonation.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, yPos);
+  yPos += 10;
+  
+  // Prepare table data
+  const tableData = fundingHistory.map(item => [
+    new Date(item.date || item.createdAt).toLocaleDateString(),
+    item.transactionId || 'N/A',
+    `৳${(item.amount || 0).toLocaleString()}`,
+    item.paymentMethod || 'N/A',
+    item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : 'Completed',
+    item.purpose || 'General Donation',
+  ]);
+  
+  // Generate table
+  doc.autoTable({
+    head: [['Date', 'Transaction ID', 'Amount', 'Payment Method', 'Status', 'Purpose']],
+    body: tableData,
+    startY: yPos,
+    theme: 'striped',
+    headStyles: {
+      fillColor: [34, 197, 94], // Green color for funding
+      textColor: 255,
+      fontStyle: 'bold',
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+    },
+    columnStyles: {
+      0: { cellWidth: 25 }, // Date
+      1: { cellWidth: 35 }, // Transaction ID
+      2: { cellWidth: 25 }, // Amount
+      3: { cellWidth: 30 }, // Payment Method
+      4: { cellWidth: 25 }, // Status
+      5: { cellWidth: 40 }, // Purpose
+    },
+    margin: { top: 10 },
+  });
+  
+  // Add footer
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(
+      `Page ${i} of ${pageCount} | Blood Donation Platform - Funding Report`,
+      105,
+      doc.internal.pageSize.height - 10,
+      { align: 'center' }
+    );
+  }
+  
+  return doc;
+};
+
+/**
  * Download PDF file
  * @param {jsPDF} doc - PDF document
  * @param {string} filename - Filename for download
@@ -724,12 +843,14 @@ export const viewPDF = (doc) => {
   window.open(pdfUrl, '_blank');
 };
 
+// Only ONE export default at the end
 export default {
   generateDonorsPDF,
   generateDonationRequestPDF,
   generateProfilePDF,
   generateDonationHistoryPDF,
   generateAdminReportPDF,
+  generateFundingHistoryPDF,
   downloadPDF,
   viewPDF,
 };

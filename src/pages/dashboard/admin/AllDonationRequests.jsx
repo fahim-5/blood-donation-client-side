@@ -5,7 +5,7 @@ import DashboardHeader from '../../../components/ui/DashboardHeader';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import useAdmin from '../../../hooks/useAdmin';
-import { exportToPDF } from '../../../utils/pdfGenerator';
+import { generateDonorsPDF, downloadPDF } from '../../../utils/pdfGenerator';
 
 const AllDonationRequests = () => {
   const { getAllDonationRequests, deleteDonationRequest, loading } = useAdmin();
@@ -71,11 +71,11 @@ const AllDonationRequests = () => {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(request => 
-        request.recipientName.toLowerCase().includes(term) ||
-        request.hospitalName.toLowerCase().includes(term) ||
+        request.recipientName?.toLowerCase().includes(term) ||
+        request.hospitalName?.toLowerCase().includes(term) ||
         request.requesterName?.toLowerCase().includes(term) ||
-        request.recipientDistrict.toLowerCase().includes(term) ||
-        request.recipientUpazila.toLowerCase().includes(term)
+        request.recipientDistrict?.toLowerCase().includes(term) ||
+        request.recipientUpazila?.toLowerCase().includes(term)
       );
     }
 
@@ -128,18 +128,29 @@ const AllDonationRequests = () => {
       return;
     }
     
-    const data = {
-      title: 'All Donation Requests Report',
-      filters: { 
-        status: statusFilter, 
-        bloodGroup: bloodGroupFilter,
-        search: searchTerm 
-      },
-      requests: filteredRequests,
+    // Format donation requests as donor-like data for PDF generation
+    const donorsData = filteredRequests.map(request => ({
+      name: request.recipientName || 'Unknown',
+      bloodGroup: request.bloodGroup || 'Unknown',
+      district: request.recipientDistrict || 'Unknown',
+      upazila: request.recipientUpazila || 'Unknown',
+      email: request.requesterEmail || request.requester?.email || 'N/A',
+      phone: request.requester?.phone || 'N/A',
+      status: request.status === 'done' ? 'Completed' : 
+              request.status === 'canceled' ? 'Canceled' :
+              request.status === 'inprogress' ? 'In Progress' : 'Pending'
+    }));
+    
+    const filters = {
+      reportType: 'All Donation Requests Report',
+      status: statusFilter === 'all' ? 'All Status' : statusFilter,
+      bloodGroup: bloodGroupFilter === 'all' ? 'All Blood Groups' : bloodGroupFilter,
+      search: searchTerm || 'None',
       exportDate: new Date().toLocaleDateString()
     };
     
-    exportToPDF(data, 'all-donation-requests');
+    const doc = generateDonorsPDF(donorsData, filters);
+    downloadPDF(doc, `all-donation-requests-${new Date().getTime()}`);
   };
 
   // Pagination calculations

@@ -50,6 +50,134 @@ export const formatDate = (date, format = 'YYYY-MM-DD') => {
 };
 
 /**
+ * Format time string (HH:MM format)
+ * @param {string} time - Time string (HH:MM format)
+ * @returns {string} - Formatted time
+ */
+export const formatTime = (time) => {
+  if (!time) return '';
+  
+  // Handle different time formats
+  let hours, minutes;
+  
+  if (time.includes(':')) {
+    [hours, minutes] = time.split(':').map(Number);
+  } else if (time.length === 4) {
+    // Handle '0230' format
+    hours = parseInt(time.substring(0, 2));
+    minutes = parseInt(time.substring(2));
+  } else {
+    return time;
+  }
+  
+  if (isNaN(hours) || isNaN(minutes)) {
+    return time;
+  }
+  
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  
+  return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+};
+
+/**
+ * Get time remaining until target date/time
+ * @param {Date|string} targetDate - Target date
+ * @param {string} targetTime - Target time (HH:MM format)
+ * @returns {Object} - Time remaining object
+ */
+export const getTimeRemaining = (targetDate, targetTime = '23:59') => {
+  if (!targetDate) {
+    return {
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      totalHours: 0,
+      isPast: true,
+      formatted: 'Expired',
+      isCritical: false,
+      isUrgent: false
+    };
+  }
+
+  // Parse the date
+  let target;
+  try {
+    target = new Date(targetDate);
+    
+    // Parse the time
+    const [hours, minutes] = targetTime.split(':').map(Number);
+    if (!isNaN(hours) && !isNaN(minutes)) {
+      target.setHours(hours || 23, minutes || 59, 0, 0);
+    }
+  } catch (error) {
+    console.error('Error parsing date/time:', error);
+    return {
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      totalHours: 0,
+      isPast: true,
+      formatted: 'Invalid Date',
+      isCritical: false,
+      isUrgent: false
+    };
+  }
+  
+  const now = new Date();
+  const diff = target - now;
+  
+  if (diff <= 0) {
+    return {
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      totalHours: 0,
+      isPast: true,
+      formatted: 'Expired',
+      isCritical: false,
+      isUrgent: false
+    };
+  }
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hoursRemaining = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutesRemaining = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const secondsRemaining = Math.floor((diff % (1000 * 60)) / 1000);
+  const totalHours = Math.floor(diff / (1000 * 60 * 60));
+  
+  // Determine urgency levels
+  const isCritical = totalHours <= 12;
+  const isUrgent = totalHours <= 24 && totalHours > 12;
+  
+  let formatted = '';
+  if (days > 0) {
+    formatted = `${days} day${days > 1 ? 's' : ''} ${hoursRemaining} hour${hoursRemaining !== 1 ? 's' : ''}`;
+  } else if (hoursRemaining > 0) {
+    formatted = `${hoursRemaining} hour${hoursRemaining > 1 ? 's' : ''} ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}`;
+  } else if (minutesRemaining > 0) {
+    formatted = `${minutesRemaining} minute${minutesRemaining > 1 ? 's' : ''}`;
+  } else {
+    formatted = `${secondsRemaining} second${secondsRemaining !== 1 ? 's' : ''}`;
+  }
+  
+  return {
+    days,
+    hours: hoursRemaining,
+    minutes: minutesRemaining,
+    seconds: secondsRemaining,
+    totalHours: hoursRemaining + (days * 24),
+    isPast: false,
+    formatted: formatted.trim(),
+    isCritical,
+    isUrgent
+  };
+};
+
+/**
  * Get relative time from now
  * @param {Date|string} date - Date to compare
  * @returns {string} - Relative time string
@@ -527,6 +655,8 @@ export const getTimezoneOffset = (date) => {
 
 export default {
   formatDate,
+  formatTime,
+  getTimeRemaining,
   getRelativeTime,
   isToday,
   isYesterday,

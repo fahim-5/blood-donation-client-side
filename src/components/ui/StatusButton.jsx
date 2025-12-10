@@ -166,11 +166,3 @@ export const WarningButton = (props) => (
 );
 
 export default StatusButton;
-export {
-  PendingButton,
-  InProgressButton,
-  DoneButton,
-  CanceledButton,
-  ProcessingButton,
-  WarningButton
-};

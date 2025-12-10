@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FiMapPin, FiChevronDown, FiX } from 'react-icons/fi';
-import { districtsData, upazilasData } from '../../utils/locationData';
+import { getDistricts, getUpazilasByDistrict } from '../../utils/locationData'; // Import the helper functions
 
 const LocationSelect = ({
   selectedDistrict = '',
@@ -20,28 +20,15 @@ const LocationSelect = ({
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Load districts
-    if (districtsData && districtsData.length > 0) {
-      setDistricts(districtsData);
-    } else {
-      // Fallback to default districts if data not loaded
-      setDistricts([
-        { id: 'dhaka', name: 'Dhaka' },
-        { id: 'chittagong', name: 'Chittagong' },
-        { id: 'rajshahi', name: 'Rajshahi' },
-        { id: 'khulna', name: 'Khulna' },
-        { id: 'barisal', name: 'Barisal' },
-        { id: 'sylhet', name: 'Sylhet' },
-        { id: 'rangpur', name: 'Rangpur' },
-        { id: 'mymensingh', name: 'Mymensingh' }
-      ]);
-    }
+    // Load districts using the helper function
+    const districtsList = getDistricts();
+    setDistricts(districtsList);
   }, []);
 
   useEffect(() => {
     // Load upazilas based on selected district
-    if (selectedDistrict && upazilasData) {
-      const districtUpazilas = upazilasData[selectedDistrict] || [];
+    if (selectedDistrict) {
+      const districtUpazilas = getUpazilasByDistrict(selectedDistrict);
       setUpazilas(districtUpazilas);
     } else {
       setUpazilas([]);
@@ -109,7 +96,7 @@ const LocationSelect = ({
           >
             <option value="">{placeholderDistrict}</option>
             {districts.map((district) => (
-              <option key={district.id || district.name} value={district.id || district.name}>
+              <option key={district.id} value={district.id}>
                 {district.name}
               </option>
             ))}
@@ -132,8 +119,8 @@ const LocationSelect = ({
           >
             <option value="">{placeholderUpazila}</option>
             {upazilas.map((upazila) => (
-              <option key={upazila.id || upazila} value={upazila.id || upazila}>
-                {upazila.name || upazila}
+              <option key={upazila.id} value={upazila.id}>
+                {upazila.name}
               </option>
             ))}
           </select>
@@ -153,8 +140,8 @@ const LocationSelect = ({
         <div className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
           <FiMapPin className="w-4 h-4 text-red-500" />
           <span>
-            {selectedDistrict && districts.find(d => (d.id || d.name) === selectedDistrict)?.name}
-            {selectedUpazila && `, ${upazilas.find(u => (u.id || u) === selectedUpazila)?.name || selectedUpazila}`}
+            {selectedDistrict && districts.find(d => d.id === selectedDistrict)?.name}
+            {selectedUpazila && `, ${upazilas.find(u => u.id === selectedUpazila)?.name || selectedUpazila}`}
           </span>
         </div>
       )}

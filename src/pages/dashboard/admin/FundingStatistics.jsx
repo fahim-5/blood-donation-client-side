@@ -6,7 +6,7 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import FundingChart from '../../../components/charts/FundingChart';
 import FundingTable from '../../../components/tables/FundingTable';
 import useAdmin from '../../../hooks/useAdmin';
-import { exportToPDF } from '../../../utils/pdfGenerator';
+import { generateAdminReportPDF, downloadPDF } from '../../../utils/pdfGenerator';
 
 const FundingStatistics = () => {
   const { getFundingStatistics, loading } = useAdmin();
@@ -36,14 +36,24 @@ const FundingStatistics = () => {
   const handleExportPDF = () => {
     if (!stats) return;
     
-    const data = {
-      title: 'Funding Statistics Report',
-      period: timeFilter,
-      stats: stats,
-      exportDate: new Date().toLocaleDateString()
+    // Format data for admin report PDF
+    const reportData = {
+      totalFunding: stats.totalAmount || 0,
+      activeDonors: stats.totalDonors || 0,
+      totalDonations: stats.totalDonations || 0,
+      pendingRequests: 0, // Not applicable for funding
+      completedDonations: stats.totalDonations || 0,
+      totalUsers: stats.totalDonors || 0,
+      recentActivity: stats.recentTransactions?.map(transaction => ({
+        timestamp: transaction.date || new Date().toISOString(),
+        type: 'Donation',
+        description: `Donation of ৳${transaction.amount} from ${transaction.donorName || 'Anonymous'}`,
+        user: transaction.donorName || 'Anonymous'
+      })) || []
     };
     
-    exportToPDF(data, 'funding-statistics');
+    const doc = generateAdminReportPDF(reportData, 'funding-statistics');
+    downloadPDF(doc, `funding-statistics-${timeFilter}`);
   };
 
   const timeFilters = [
@@ -86,12 +96,12 @@ const FundingStatistics = () => {
                 <FaMoneyBillWave className="text-2xl text-green-600" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-gray-900">৳{stats.totalAmount?.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-gray-900">৳{stats.totalAmount?.toLocaleString() || 0}</div>
                 <div className="text-sm text-gray-600">Total Funding</div>
               </div>
             </div>
             <div className="text-sm text-green-600 font-medium">
-              ↑ {stats.growthPercentage}% from previous period
+              ↑ {stats.growthPercentage || 0}% from previous period
             </div>
           </div>
 
@@ -101,12 +111,12 @@ const FundingStatistics = () => {
                 <FaUsers className="text-2xl text-blue-600" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-gray-900">{stats.totalDonors}</div>
+                <div className="text-2xl font-bold text-gray-900">{stats.totalDonors || 0}</div>
                 <div className="text-sm text-gray-600">Total Donors</div>
               </div>
             </div>
             <div className="text-sm text-blue-600 font-medium">
-              {stats.newDonors} new this period
+              {stats.newDonors || 0} new this period
             </div>
           </div>
 
@@ -116,7 +126,7 @@ const FundingStatistics = () => {
                 <FaTint className="text-2xl text-red-600" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-gray-900">{stats.totalDonations}</div>
+                <div className="text-2xl font-bold text-gray-900">{stats.totalDonations || 0}</div>
                 <div className="text-sm text-gray-600">Total Donations</div>
               </div>
             </div>
@@ -131,12 +141,12 @@ const FundingStatistics = () => {
                 <FaChartLine className="text-2xl text-purple-600" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-gray-900">৳{stats.recentAmount?.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-gray-900">৳{stats.recentAmount?.toLocaleString() || 0}</div>
                 <div className="text-sm text-gray-600">Recent 30 Days</div>
               </div>
             </div>
             <div className="text-sm text-purple-600 font-medium">
-              {stats.recentDonations} donations
+              {stats.recentDonations || 0} donations
             </div>
           </div>
         </motion.div>
@@ -302,15 +312,15 @@ const FundingStatistics = () => {
             <ul className="space-y-3 text-gray-700">
               <li className="flex items-start gap-2">
                 <span className="text-blue-600 font-bold mt-0.5">•</span>
-                <span>Average donation amount: <strong>৳{stats.averageAmount}</strong></span>
+                <span>Average donation amount: <strong>৳{stats.averageAmount || 0}</strong></span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-blue-600 font-bold mt-0.5">•</span>
-                <span>Growth rate: <strong className="text-green-600">{stats.growthPercentage}%</strong> compared to previous period</span>
+                <span>Growth rate: <strong className="text-green-600">{stats.growthPercentage || 0}%</strong> compared to previous period</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-blue-600 font-bold mt-0.5">•</span>
-                <span><strong>{stats.newDonors}</strong> new donors in this period</span>
+                <span><strong>{stats.newDonors || 0}</strong> new donors in this period</span>
               </li>
             </ul>
           </div>
@@ -323,11 +333,11 @@ const FundingStatistics = () => {
             <ul className="space-y-3 text-gray-700">
               <li className="flex items-start gap-2">
                 <span className="text-green-600 font-bold mt-0.5">•</span>
-                <span>Total funds raised: <strong>৳{stats.totalAmount?.toLocaleString()}</strong></span>
+                <span>Total funds raised: <strong>৳{stats.totalAmount?.toLocaleString() || 0}</strong></span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600 font-bold mt-0.5">•</span>
-                <span>Funds used for emergency blood supplies: <strong>৳{stats.emergencyFunds?.toLocaleString()}</strong></span>
+                <span>Funds used for emergency blood supplies: <strong>৳{stats.emergencyFunds?.toLocaleString() || 0}</strong></span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600 font-bold mt-0.5">•</span>

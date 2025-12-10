@@ -7,7 +7,7 @@ import FundingTable from '../../../components/tables/FundingTable';
 import PaymentModal from '../../../components/modals/PaymentModal';
 import useAuth from '../../../hooks/useAuth';
 import useFunding from '../../../hooks/useFunding';
-import { exportToPDF } from '../../../utils/pdfGenerator';
+import { generateDonorsPDF, downloadPDF } from '../../../utils/pdfGenerator';
 
 const Funding = () => {
   const { user } = useAuth();
@@ -89,16 +89,25 @@ const Funding = () => {
       return;
     }
     
-    const data = {
-      title: 'Funding History Report',
-      user: user?.name,
-      period: timeFilter,
-      history: filteredHistory,
-      stats: fundingStats,
-      exportDate: new Date().toLocaleDateString()
+    // Format funding history as donor-like data for PDF generation
+    const donorsData = filteredHistory.map(item => ({
+      name: item.donorName || user?.name || 'Anonymous Donor',
+      bloodGroup: 'Funding',
+      district: 'N/A',
+      upazila: 'N/A',
+      email: item.email || user?.email || 'N/A',
+      phone: item.contact || user?.phone || 'N/A',
+      status: item.status === 'completed' ? 'Completed' : 'Processing'
+    }));
+    
+    const filters = {
+      reportType: 'Funding History',
+      period: timeFilter === 'all' ? 'All Time' : timeFilter,
+      user: user?.name || 'Anonymous'
     };
     
-    exportToPDF(data, 'funding-history');
+    const doc = generateDonorsPDF(donorsData, filters);
+    downloadPDF(doc, `funding-history-${timeFilter}`);
   };
 
   const timeFilters = [

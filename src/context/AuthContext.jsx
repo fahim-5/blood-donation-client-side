@@ -1,7 +1,7 @@
 // client/src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { authService } from '../services/authService';
+import authService from '../services/authService'; // Fixed: default import
 import { toast } from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -26,14 +26,17 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       try {
         if (token) {
-          const userData = await authService.getCurrentUser();
-          setUser(userData);
-          
-          // Redirect blocked users
-          if (userData?.status === 'blocked') {
-            toast.error('Your account has been blocked. Please contact support.');
-            logout();
-            navigate('/blocked');
+          const response = await authService.getCurrentUser();
+          if (response.success && response.data) {
+            const userData = response.data;
+            setUser(userData);
+            
+            // Redirect blocked users
+            if (userData?.status === 'blocked') {
+              toast.error('Your account has been blocked. Please contact support.');
+              logout();
+              navigate('/blocked');
+            }
           }
         }
       } catch (error) {
@@ -56,12 +59,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkTokenExpiration = () => {
       if (token) {
-        const tokenData = JSON.parse(atob(token.split('.')[1]));
-        const expiresAt = tokenData.exp * 1000;
-        
-        if (Date.now() >= expiresAt) {
-          toast.error('Your session has expired. Please login again.');
-          logout();
+        try {
+          const tokenData = JSON.parse(atob(token.split('.')[1]));
+          const expiresAt = tokenData.exp * 1000;
+          
+          if (Date.now() >= expiresAt) {
+            toast.error('Your session has expired. Please login again.');
+            logout();
+          }
+        } catch (error) {
+          console.error('Token parse error:', error);
         }
       }
     };
@@ -85,28 +92,32 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setLoading(true);
-      const response = await authService.login(email, password);
+      const response = await authService.login({ email, password });
       
-      const { user: userData, token: authToken } = response;
-      
-      // Store token
-      localStorage.setItem('token', authToken);
-      setToken(authToken);
-      setUser(userData);
-      
-      // Check if user is blocked
-      if (userData.status === 'blocked') {
-        toast.error('Your account has been blocked. Please contact support.');
-        logout();
-        return { success: false, error: 'Account blocked' };
+      if (response.success && response.data) {
+        const { user: userData, token: authToken } = response.data;
+        
+        // Store token
+        localStorage.setItem('token', authToken);
+        setToken(authToken);
+        setUser(userData);
+        
+        // Check if user is blocked
+        if (userData.status === 'blocked') {
+          toast.error('Your account has been blocked. Please contact support.');
+          logout();
+          return { success: false, error: 'Account blocked' };
+        }
+        
+        toast.success(`Welcome back, ${userData.name}!`);
+        
+        return { success: true, user: userData };
+      } else {
+        throw new Error(response.message || 'Login failed');
       }
-      
-      toast.success(`Welcome back, ${userData.name}!`);
-      
-      return { success: true, user: userData };
     } catch (error) {
       console.error('Login failed:', error);
-      const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.';
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed. Please check your credentials.';
       toast.error(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -119,19 +130,23 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const response = await authService.register(userData);
       
-      const { user: newUser, token: authToken } = response;
-      
-      // Store token
-      localStorage.setItem('token', authToken);
-      setToken(authToken);
-      setUser(newUser);
-      
-      toast.success('Registration successful! Welcome to BloodDonation.');
-      
-      return { success: true, user: newUser };
+      if (response.success && response.data) {
+        const { user: newUser, token: authToken } = response.data;
+        
+        // Store token
+        localStorage.setItem('token', authToken);
+        setToken(authToken);
+        setUser(newUser);
+        
+        toast.success('Registration successful! Welcome to BloodDonation.');
+        
+        return { success: true, user: newUser };
+      } else {
+        throw new Error(response.message || 'Registration failed');
+      }
     } catch (error) {
       console.error('Registration failed:', error);
-      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
+      const errorMessage = error.response?.data?.message || error.message || 'Registration failed. Please try again.';
       toast.error(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -140,7 +155,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Try to call logout API
+    authService.logout().catch(console.error);
+    
+    // Clear local storage
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setToken(null);
     setUser(null);
     
@@ -153,18 +173,30 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = (updatedData) => {
     setUser(prev => ({ ...prev, ...updatedData }));
+    // Update localStorage too
+    const currentUser = localStorage.getItem('user');
+    if (currentUser) {
+      const userObj = JSON.parse(currentUser);
+      const updatedUser = { ...userObj, ...updatedData };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
   };
 
   const refreshToken = async () => {
     try {
       const response = await authService.refreshToken();
-      const { token: newToken, user: userData } = response;
       
-      localStorage.setItem('token', newToken);
-      setToken(newToken);
-      setUser(userData);
-      
-      return { success: true, token: newToken };
+      if (response.success && response.data) {
+        const { token: newToken, user: userData } = response.data;
+        
+        localStorage.setItem('token', newToken);
+        setToken(newToken);
+        setUser(userData);
+        
+        return { success: true, token: newToken };
+      } else {
+        throw new Error(response.message || 'Token refresh failed');
+      }
     } catch (error) {
       console.error('Token refresh failed:', error);
       logout();

@@ -14,6 +14,9 @@ export const USER_ROLES = {
   VOLUNTEER: 'volunteer',
 };
 
+// Add alias for ROLE (for backward compatibility)
+export const ROLE = USER_ROLES;
+
 export const ROLE_LABELS = {
   [USER_ROLES.ADMIN]: 'Administrator',
   [USER_ROLES.DONOR]: 'Donor',
@@ -25,6 +28,8 @@ export const ROLE_COLORS = {
   [USER_ROLES.DONOR]: 'bg-red-100 text-red-800',
   [USER_ROLES.VOLUNTEER]: 'bg-blue-100 text-blue-800',
 };
+
+// ... rest of your constants file remains the same ...
 
 // User Status
 export const USER_STATUS = {
@@ -264,6 +269,7 @@ export const DATE_FORMATS = {
 export default {
   API_CONFIG,
   USER_ROLES,
+  ROLE, // Add this
   USER_STATUS,
   DONATION_STATUS,
   BLOOD_GROUPS,

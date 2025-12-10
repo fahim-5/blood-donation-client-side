@@ -1,16 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FaSearch, FaDownload, FaUser, FaPhone, FaMapMarkerAlt, FaTint } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import DonorCard from '../../components/common/DonorCard';
-import SearchFilters from '../../components/search/SearchFilters';
-import DonorResultsGrid from '../../components/search/DonorResultsGrid';
 import SearchResultsHeader from '../../components/search/SearchResultsHeader';
+import DonorResultsGrid from '../../components/search/DonorResultsGrid';
 import useLocationData from '../../hooks/useLocationData';
 import useSearchDonors from '../../hooks/useSearchDonors';
-import { exportToPDF } from '../../utils/pdfGenerator';
+import { generateDonorsPDF, downloadPDF } from '../../utils/pdfGenerator';
 
 const SearchDonors = () => {
   const [filters, setFilters] = useState({
@@ -84,14 +82,9 @@ const SearchDonors = () => {
       return;
     }
     
-    const data = {
-      title: 'Blood Donor Search Results',
-      filters: filters,
-      donors: searchResults,
-      exportDate: new Date().toLocaleDateString()
-    };
-    
-    exportToPDF(data, 'donor-search-results');
+    // Generate and download PDF
+    const doc = generateDonorsPDF(searchResults, filters);
+    downloadPDF(doc, 'donor-search-results');
   };
 
   const filteredUpazilas = upazilas.filter(upazila => 
